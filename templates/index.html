@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Product List</title>
+    <script>
+        const csrftoken = document.querySelector('[name=csrf-token]').content;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // При загрузке страницы загружаем существующие продукты
+            fetchProducts();
+
+            // Обработчик отправки формы
+            document.getElementById('productForm').addEventListener('submit', function(event) {
+                event.preventDefault();  // Предотвращаем стандартное поведение формы (обновление страницы)
+                addProduct();  // Вызов функции для отправки данных продукта
+            });
+        });
+
+        // Функция для загрузки списка продуктов
+        function fetchProducts() {
+            fetch('/api/products/')
+                .then(response => response.json())
+                .then(data => {
+                    let productTable = document.getElementById('productTable');
+                    productTable.innerHTML = '';  // Очищаем таблицу перед вставкой данных
+                    data.forEach(product => {
+                        productTable.innerHTML += `
+                            <tr>
+                                <td>${product.name}</td>
+                                <td>${product.description}</td>
+                                <td>${product.price}</td>
+                            </tr>
+                        `;
+                    });
+                })
+                .catch(error => console.error('Ошибка при загрузке продуктов:', error));
+        }
+
+        // Функция для добавления продукта
+        function addProduct() {
+            // Получаем данные из формы
+            let name = document.getElementById('name').value;
+            let description = document.getElementById('description').value;
+            let price = document.getElementById('price').value;
+
+            if (!name) {
+                alert('Название продукта не может быть пустым!');
+                return;
+            }
+
+            // Отправляем POST-запрос через fetch API
+            fetch('/api/products/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken  // Передаем CSRF-токен
+                },
+                body: JSON.stringify({ name, description, price })
+            })
+            .then(response => {
+                if (response.ok) {
+                    fetchProducts();  // Если запрос успешен, обновляем список продуктов
+                    document.getElementById('productForm').reset();  // Сбрасываем форму после успешной отправки
+                } else {
+                    return response.json().then(errorData => {
+                        console.error('Ошибки в данных:', errorData);
+                    });
+                }
+            })
+            .catch(error => console.error('Ошибка при добавлении продукта:', error));
+        }
+    </script>
+</head>
+<body>
+<h1>Product List</h1>
+<form id="productForm">
+    <label for="name">Name:</label>
+    <input type="text" id="name" required><br><br>
+    <label for="description">Description:</label>
+    <textarea id="description" required></textarea><br><br>
+    <label for="price">Price:</label>
+    <input type="number" id="price" step="0.01" required><br><br>
+    <button type="submit">Add Product</button>
+</form>
+<h2>Products</h2>
+<table border="1">
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Price</th>
+    </tr>
+    </thead>
+    <tbody id="productTable"></tbody>
+</table>
+</body>
+</html>
